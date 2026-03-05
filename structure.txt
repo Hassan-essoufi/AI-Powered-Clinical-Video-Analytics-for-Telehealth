@@ -1,0 +1,86 @@
+biostream_project/
+│
+├── backend/                              # Python backend
+│   │
+│   ├── main.py                           # FastAPI entry point (WebRTC + WebSocket)
+│   ├── config.py                         # Global settings: ports, video resolution, amplification
+│   ├── dependencies.py                   # Shared services (AI modules, frame queue)
+│   │
+│   ├── api/
+│   │   ├── routes_stream.py              # WebRTC signaling & video stream
+│   │   ├── routes_vitals.py              # REST API for vitals
+│   │   ├── routes_wound.py               # REST API for wound data
+│   │   └── routes_ws.py                  # WebSocket endpoint for real-time metrics
+│   │
+│   ├── streaming/
+│   │   ├── video_track.py                # Captures frames from WebRTC
+│   │   └── frame_queue.py                # Async queue feeding frames to AI modules
+│   │
+│   ├── ai_modules/
+│   │   ├── rppg/
+│   │   │   ├── rppg_extractor.py         # Extract skin signals
+│   │   │   ├── signal_filter.py          # Filter noise from signals
+│   │   │   └── heart_rate.py             # Calculate BPM & respiration
+│   │   │
+│   │   ├── evm/
+│   │   │   └── evm_processor.py          # Eulerian Video Magnification
+│   │   │
+│   │   └── wound/
+│   │       ├── wound_segmenter.py        # YOLO segmentation of wound
+│   │       └── wound_measurement.py      # Area & color composition from mask
+│   │
+│   ├── services/
+│   │   ├── video_processor.py            # Feeds frames to AI modules
+│   │   ├── vitals_service.py             # Aggregates rPPG results
+│   │   └── wound_service.py              # Handles wound metrics & prepares WebSocket data
+│   │
+│   └── utils/
+│       ├── image_utils.py                # Resize, crop, normalize
+│       ├── math_utils.py                 # FFT, filters, calculations
+│       └── logger.py                     # Logging
+│
+├── frontend/                             # Browser interface
+│   ├── index.html                        # Video + metrics dashboard
+│   ├── app.js                            # UI logic, REST + WebSocket client
+│   ├── webrtc_client.js                  # Handles WebRTC video
+│   └── style.css
+│
+├── models_weights/                       # Pretrained AI models
+│   ├── yolov11_seg.pt                    # YOLO wound segmentation
+│   └── sam_model.pth                     # Optional Segment Anything Model
+│
+├── tests/                                # Unit tests for modules
+│
+├── requirements.txt                      # Python dependencies (FastAPI, aiortc, YOLO, OpenCV, Torch)
+└── README.md                              # Project instructions & architecture
+
+
+
+
+the  architecture : 
+
+client Camera (Browser)
+       │
+       ▼
+   WebRTC Stream
+       │
+       ▼
+Backend Server (Python + FastAPI + aiortc)
+       │
+       ├── Frame Receiver (VideoTrack)
+       │
+       ├── Frame Queue (asyncio / multiprocessing)
+       │
+       ├── AI Modules (run in parallel):
+       │      ├─ rPPG Module (Heart Rate, Respiration)
+       │      ├─ EVM Module (Pulse / Micro-movement visualization)
+       │      └─ Wound Measurement Module (Click-to-measure)
+       │
+       └── API & WebSocket Server
+                │
+                ▼
+        Doctor Dashboard (Browser)
+        ├─ Video display
+        ├─ Toggle “Magnify” (EVM)
+        ├─ Display Heart Rate / Respiration
+        └─ Click-to-measure wounds
