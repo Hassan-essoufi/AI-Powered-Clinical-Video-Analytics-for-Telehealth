@@ -1,5 +1,4 @@
-biostream_project/
-│
+
 ├── backend/                              # Python backend
 │   │
 │   ├── main.py                           # FastAPI entry point (WebRTC + WebSocket)
