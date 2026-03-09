@@ -1,6 +1,6 @@
 
 
-*___pycache__/
-___pycache__
+__pycache__/
+backend/___pycache__
 
 venv/
