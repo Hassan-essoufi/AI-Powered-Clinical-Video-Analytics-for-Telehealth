@@ -7,7 +7,7 @@ class VideoProcessor:
     """
 
     def __init__(self, frame_queue, vitals_service, wound_service):
-        self.frame_queue = frame_queue      # from Person A
+        self.frame_queue = frame_queue      
         self.vitals_service = vitals_service
         self.wound_service = wound_service
         self.running = False
