@@ -1,6 +1,5 @@
 
-
 __pycache__/
-backend/___pycache__
-
+*.py[cod]
+*$py.clas
 venv/
