@@ -1,8 +1,8 @@
 """
 wound_measurement.py
 --------------------
-Sprint 1 : Skeleton — Compute area (cm²) and color composition from wound mask.
-Sprint 2 : Will use reference object for real-world scale calibration.
+Sprint 1 : Skeleton — placeholders zeros pour area et couleurs.
+Sprint 2 : Vraie analyse couleur + détection d'infection + conversion cm².
 """
 
 import numpy as np
@@ -10,34 +10,34 @@ import numpy as np
 
 class WoundMeasurement:
     """
-    Takes the binary mask from WoundSegmenter and computes:
-    - Wound area in cm²  (using a reference object for scale)
-    - Color composition  (RGB distribution to detect infection)
+    Prend le masque binaire de WoundSegmenter et calcule :
+    - Surface de la plaie en cm²  (avec objet de référence pour l'échelle)
+    - Composition couleur         (distribution RGB pour détecter l'infection)
 
-    Infection indicators (Sprint 2):
-        - High red/yellow → inflammation
-        - Dark/black regions → necrosis
-        - Yellow/green → possible infection
+    Indicateurs d'infection :
+        Rouge/jaune intense → inflammation
+        Noir/marron foncé   → nécrose (tissu mort)
+        Verdâtre            → infection possible
+        Rose/rouge clair    → cicatrisation normale
     """
 
     def __init__(self, pixels_per_cm: float = None):
         """
         Args:
-            pixels_per_cm: scale factor — set after calibration with reference object.
-                           None in Sprint 1 (placeholder).
+            pixels_per_cm: facteur d'échelle — calibré avec un objet de référence.
         """
-        self.pixels_per_cm = pixels_per_cm  # calibrated in Sprint 2
+        self.pixels_per_cm = pixels_per_cm
 
     def measure(self, frame: np.ndarray, mask: np.ndarray) -> dict:
         """
-        Main method — computes area and color composition of the wound.
+        Méthode principale — calcule surface et composition couleur de la plaie.
 
         Args:
-            frame : numpy array (H, W, 3) — original BGR video frame
-            mask  : binary numpy array (H, W) from WoundSegmenter
+            frame : numpy array (H, W, 3) — frame BGR originale
+            mask  : numpy array binaire (H, W) depuis WoundSegmenter
 
         Returns:
-            dict with area_cm2, color_composition, infection_risk
+            dict avec area_cm2, color_composition, infection_risk
         """
         area_px           = self._compute_area_pixels(mask)
         area_cm2          = self._convert_to_cm2(area_px)
@@ -49,64 +49,72 @@ class WoundMeasurement:
             "area_cm2"         : area_cm2,
             "color_composition": color_composition,
             "infection_risk"   : infection_risk,
-            "status"           : "placeholder_output"  # Sprint 1 marker
+            "status"           : "live"
         }
 
     def _compute_area_pixels(self, mask: np.ndarray) -> int:
-        """
-        Counts the number of pixels in the wound mask.
-        """
+        """Compte le nombre de pixels dans le masque de la plaie."""
         return int(np.sum(mask))
 
     def _convert_to_cm2(self, area_px: int) -> float:
         """
-        Converts pixel area to cm² using scale factor.
+        Convertit la surface en pixels en cm².
 
-        Sprint 1 : returns 0.0 (no calibration yet).
-        Sprint 2 : use reference object (e.g. coin of known size) to set
-                   self.pixels_per_cm, then:
-                   return area_px / (self.pixels_per_cm ** 2)
+        Nécessite une calibration préalable avec un objet de référence
+        (ex: pièce de monnaie de diamètre connu posée à côté de la plaie).
         """
         if self.pixels_per_cm is None:
-            return 0.0  # placeholder — calibration not done yet
-        return area_px / (self.pixels_per_cm ** 2)
+            return 0.0  # pas encore calibré
+        return round(area_px / (self.pixels_per_cm ** 2), 2)
 
     def _analyze_color(self, frame: np.ndarray, mask: np.ndarray) -> dict:
         """
-        Computes the average RGB color composition inside the wound mask.
+        Calcule la composition RGB moyenne des pixels dans le masque de la plaie.
 
-        Sprint 1 : returns placeholder zeros.
-        Sprint 2 : extract masked region and compute color histogram/means.
+        frame est en BGR (format OpenCV) → on inverse pour avoir RGB.
         """
         if np.sum(mask) == 0:
             return {"r_mean": 0.0, "g_mean": 0.0, "b_mean": 0.0}
 
-        # Sprint 1 : placeholder
-        # Sprint 2 :
-        #   wound_pixels = frame[mask == 1]       # shape: (N, 3) BGR
-        #   b_mean, g_mean, r_mean = wound_pixels.mean(axis=0)
+        # extraire uniquement les pixels de la plaie
+        wound_pixels       = frame[mask == 1]           # shape: (N, 3) en BGR
+        b_mean, g_mean, r_mean = wound_pixels.mean(axis=0)
+
         return {
-            "r_mean": 0.0,   # placeholder
-            "g_mean": 0.0,   # placeholder
-            "b_mean": 0.0    # placeholder
+            "r_mean": round(float(r_mean), 2),
+            "g_mean": round(float(g_mean), 2),
+            "b_mean": round(float(b_mean), 2)
         }
 
     def _assess_infection(self, color_composition: dict) -> str:
         """
-        Estimates infection risk based on color composition.
+        Évalue le risque d'infection basé sur la composition couleur.
 
-        Sprint 1 : always returns 'unknown' as placeholder.
-        Sprint 2 : apply color thresholds or a trained classifier.
+        Seuils basés sur des indicateurs cliniques visuels :
+        - Rouge intense (r > 180, g < 80)  → inflammation élevée
+        - Verdâtre (g > r et g > b)        → infection possible
+        - Très sombre (tout < 80)          → nécrose possible
+        - Autrement                         → risque faible
         """
-        # TODO Sprint 2 : real infection detection logic
-        return "unknown"  # placeholder
+        r = color_composition["r_mean"]
+        g = color_composition["g_mean"]
+        b = color_composition["b_mean"]
+
+        if r > 180 and g < 80:
+            return "high"      # rouge intense → inflammation
+        elif g > r and g > b:
+            return "medium"    # verdâtre → infection possible
+        elif r < 80 and g < 80 and b < 80:
+            return "high"      # très sombre → nécrose possible
+        else:
+            return "low"       # couleurs normales → cicatrisation
 
     def calibrate(self, reference_diameter_cm: float, reference_diameter_px: int):
         """
-        Sets the pixels_per_cm scale using a known reference object.
+        Définit le facteur pixels_per_cm via un objet de référence.
 
         Args:
-            reference_diameter_cm : real-world size of reference (e.g. 2.6cm for a coin)
-            reference_diameter_px : measured pixel size of same reference in frame
+            reference_diameter_cm : taille réelle de l'objet (ex: 2.6cm pour une pièce)
+            reference_diameter_px : taille en pixels du même objet dans la frame
         """
         self.pixels_per_cm = reference_diameter_px / reference_diameter_cm

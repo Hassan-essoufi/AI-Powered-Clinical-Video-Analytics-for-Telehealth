@@ -1,72 +1,102 @@
 """
 wound_segmenter.py
 ------------------
-Sprint 1 : Skeleton — YOLO segmentation of wound area.
-Sprint 2 : Will use YOLOv11-seg or SAM (Segment Anything Model).
+Sprint 1 : Skeleton — masque carré autour du clic (placeholder).
+Sprint 2 : Segmentation réelle avec YOLOv11-seg.
 """
 
 import numpy as np
+import cv2
+
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO_AVAILABLE = False
 
 
 class WoundSegmenter:
     """
-    Detects and segments the wound region from a video frame.
+    Détecte et segmente la zone de plaie depuis une frame vidéo.
 
-    The doctor clicks on the wound in the video → this class
-    produces a binary mask of the wound area.
+    Le médecin clique sur la plaie → cette classe produit
+    un masque binaire de la zone de la plaie.
 
-    Sprint 2 options:
-        - YOLOv11-seg : fast, real-time capable
-        - SAM (Segment Anything Model) : more accurate, click-based
+    Sprint 2 : YOLOv11-seg — rapide, compatible temps réel.
     """
 
     def __init__(self, model_type: str = "yolov11"):
         """
         Args:
-            model_type: 'yolov11' or 'sam'
+            model_type: 'yolov11' (défaut) ou 'sam'
         """
         self.model_type = model_type
-        self.model      = None   # loaded in Sprint 2
+        self.model      = None
 
-        # Sprint 2 : load model here
-        # if model_type == "yolov11":
-        #     from ultralytics import YOLO
-        #     self.model = YOLO("yolov11-seg.pt")
-        # elif model_type == "sam":
-        #     from segment_anything import SamPredictor
-        #     self.model = SamPredictor(...)
+        if YOLO_AVAILABLE:
+            # Téléchargement automatique du modèle au premier lancement
+            self.model = YOLO("yolo11n-seg.pt")
+        else:
+            print("[WoundSegmenter] ultralytics non installé — mode placeholder actif")
 
     def segment(self, frame: np.ndarray, click_point: tuple) -> dict:
         """
-        Segments the wound region based on a click point from the doctor.
+        Segmente la zone de plaie à partir du point cliqué par le médecin.
 
         Args:
-            frame      : numpy array (H, W, 3) — BGR video frame
-            click_point: (x, y) pixel coordinates where doctor clicked
+            frame      : numpy array (H, W, 3) — frame BGR
+            click_point: (x, y) coordonnées pixel du clic
 
         Returns:
-            dict with binary mask and bounding box
+            dict avec masque binaire et bounding box
         """
-        # Sprint 1 : placeholder mask (small square around click point)
-        # Sprint 2 : run YOLOv11-seg or SAM inference
-        mask = self._placeholder_mask(frame, click_point)
+        if self.model is not None:
+            mask   = self._yolo_segment(frame, click_point)
+            status = "yolo_output"
+        else:
+            mask   = self._placeholder_mask(frame, click_point)
+            status = "placeholder_output"
 
         return {
-            "mask"       : mask,              # binary numpy array (H, W)
+            "mask"       : mask,
             "bbox"       : self._get_bbox(mask),
             "click_point": click_point,
-            "status"     : "placeholder_output"  # Sprint 1 marker
+            "status"     : status
         }
+
+    def _yolo_segment(self, frame: np.ndarray, click_point: tuple) -> np.ndarray:
+        """
+        Lance l'inférence YOLOv11-seg et retourne le masque
+        correspondant au point cliqué par le médecin.
+        """
+        results = self.model(frame, verbose=False)
+        cx, cy  = click_point
+        h, w    = frame.shape[:2]
+
+        if results[0].masks is None:
+            # YOLO n'a rien détecté → fallback placeholder
+            return self._placeholder_mask(frame, click_point)
+
+        masks = results[0].masks.data.cpu().numpy()
+
+        for mask in masks:
+            mask_resized = cv2.resize(mask, (w, h))
+            # vérifier si le point cliqué est dans ce masque
+            if mask_resized[cy, cx] > 0.5:
+                return (mask_resized > 0.5).astype(np.uint8)
+
+        # aucun masque ne contient le point → fallback placeholder
+        return self._placeholder_mask(frame, click_point)
 
     def _placeholder_mask(self, frame: np.ndarray, click_point: tuple) -> np.ndarray:
         """
-        Creates a small square binary mask around the click point.
-        Used as placeholder until real segmentation is implemented.
+        Masque carré de 50x50 pixels autour du clic.
+        Utilisé quand YOLO n'est pas disponible ou ne détecte rien.
         """
         h, w   = frame.shape[:2]
         mask   = np.zeros((h, w), dtype=np.uint8)
         cx, cy = click_point
-        size   = 50  # placeholder square of 50x50 pixels
+        size   = 50
 
         x1 = max(0, cx - size)
         x2 = min(w, cx + size)
@@ -78,7 +108,7 @@ class WoundSegmenter:
 
     def _get_bbox(self, mask: np.ndarray) -> tuple:
         """
-        Returns bounding box (x1, y1, x2, y2) of the mask.
+        Retourne la bounding box (x1, y1, x2, y2) du masque.
         """
         rows = np.any(mask, axis=1)
         cols = np.any(mask, axis=0)

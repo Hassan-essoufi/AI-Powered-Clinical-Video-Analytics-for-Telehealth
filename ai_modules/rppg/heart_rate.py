@@ -1,8 +1,8 @@
 """
 heart_rate.py
 -------------
-Sprint 1 : Skeleton — Calculate BPM and respiration rate from filtered signal.
-Sprint 2 : Will apply FFT to extract dominant frequency peaks.
+Sprint 1 : Skeleton — placeholders 72 BPM et 16 breaths/min.
+Sprint 2 : Vrai calcul via FFT sur le canal vert du signal filtré.
 """
 
 import numpy as np
@@ -10,89 +10,121 @@ import numpy as np
 
 class HeartRateCalculator:
     """
-    Takes the filtered rPPG signal and computes:
-    - Heart Rate in BPM (beats per minute)
-    - Respiration Rate in breaths/min
+    Prend le signal rPPG filtré et calcule :
+    - Fréquence cardiaque en BPM (battements par minute)
+    - Fréquence respiratoire en respirations/min
 
-    Method : FFT (Fast Fourier Transform) on the green channel
-    which carries the strongest pulse signal.
+    Méthode : FFT (Fast Fourier Transform) sur le canal vert
+    qui porte le signal de pouls le plus fort.
     """
 
     def __init__(self, fps: int = 30):
         """
         Args:
-            fps: frames per second — needed to convert FFT frequency to BPM
+            fps: frames par seconde — nécessaire pour convertir la fréquence FFT en BPM
         """
         self.fps = fps
 
-        # Frequency ranges
+        # Plages de fréquences
         self.hr_freq_low  = 0.7   # Hz → 42 BPM
         self.hr_freq_high = 4.0   # Hz → 240 BPM
-        self.rr_freq_low  = 0.1   # Hz → 6 breaths/min
-        self.rr_freq_high = 0.5   # Hz → 30 breaths/min
+        self.rr_freq_low  = 0.1   # Hz → 6 respirations/min
+        self.rr_freq_high = 0.5   # Hz → 30 respirations/min
 
     def calculate(self, filtered_signal: np.ndarray) -> dict:
         """
-        Main method — computes heart rate and respiration rate.
+        Méthode principale — calcule la fréquence cardiaque et respiratoire.
 
         Args:
-            filtered_signal: numpy array (N, 3) from SignalFilter
+            filtered_signal: numpy array (N, 3) depuis SignalFilter
 
         Returns:
-            dict with BPM, respiration rate, and signal quality
+            dict avec BPM, fréquence respiratoire et qualité du signal
         """
         if filtered_signal is None or len(filtered_signal) < 30:
-            return self._placeholder_output("not_enough_data")
+            return self._insufficient_output("not_enough_data")
 
-        heart_rate_bpm    = self._compute_heart_rate(filtered_signal)
-        respiration_rate  = self._compute_respiration_rate(filtered_signal)
-        signal_quality    = self._assess_quality(filtered_signal)
+        heart_rate_bpm   = self._compute_heart_rate(filtered_signal)
+        respiration_rate = self._compute_respiration_rate(filtered_signal)
+        signal_quality   = self._assess_quality(filtered_signal)
 
         return {
-            "heart_rate_bpm"   : heart_rate_bpm,
-            "respiration_rate" : respiration_rate,
-            "signal_quality"   : signal_quality,
-            "status"           : "placeholder_output"   # Sprint 1 marker
+            "heart_rate_bpm"  : heart_rate_bpm,
+            "respiration_rate": respiration_rate,
+            "signal_quality"  : signal_quality,
+            "status"          : "live"
         }
 
     def _compute_heart_rate(self, signal: np.ndarray) -> float:
         """
-        Uses FFT on the green channel to find dominant pulse frequency.
+        FFT sur le canal vert pour trouver la fréquence dominante du pouls.
 
-        Sprint 1 : returns placeholder value of 72 BPM.
-        Sprint 2 : implement FFT peak detection:
-            green = signal[:, 1]
-            freqs = np.fft.rfftfreq(len(green), d=1/self.fps)
-            power = np.abs(np.fft.rfft(green))
-            # mask to HR range, find peak
+        Étapes :
+        1. Extraire le canal vert (le plus sensible au pouls)
+        2. Calculer la FFT → obtenir les fréquences et leurs puissances
+        3. Masquer uniquement la plage du pouls (0.7 – 4 Hz)
+        4. Trouver le pic dominant → convertir en BPM
         """
-        # TODO Sprint 2 : real FFT-based calculation
-        return 72.0  # placeholder
+        green = signal[:, 1]                                          # canal vert
+        freqs = np.fft.rfftfreq(len(green), d=1/self.fps)            # fréquences en Hz
+        power = np.abs(np.fft.rfft(green))                           # puissance de chaque fréquence
+
+        # garder uniquement la plage du pouls
+        mask  = (freqs >= self.hr_freq_low) & (freqs <= self.hr_freq_high)
+
+        if not mask.any():
+            return 0.0
+
+        peak_freq = freqs[mask][np.argmax(power[mask])]              # fréquence dominante
+        return round(peak_freq * 60, 1)                              # Hz → BPM
 
     def _compute_respiration_rate(self, signal: np.ndarray) -> float:
         """
-        Uses FFT on the signal to find dominant respiration frequency.
-
-        Sprint 1 : returns placeholder value of 16 breaths/min.
-        Sprint 2 : same as heart rate but with lower frequency range.
+        FFT sur le canal vert pour trouver la fréquence respiratoire.
+        Même logique que heart rate mais sur une plage plus basse (0.1 – 0.5 Hz).
         """
-        # TODO Sprint 2 : real FFT-based calculation
-        return 16.0  # placeholder
+        green = signal[:, 1]
+        freqs = np.fft.rfftfreq(len(green), d=1/self.fps)
+        power = np.abs(np.fft.rfft(green))
+
+        mask  = (freqs >= self.rr_freq_low) & (freqs <= self.rr_freq_high)
+
+        if not mask.any():
+            return 0.0
+
+        peak_freq = freqs[mask][np.argmax(power[mask])]
+        return round(peak_freq * 60, 1)                              # Hz → respirations/min
 
     def _assess_quality(self, signal: np.ndarray) -> str:
         """
-        Assesses the quality of the signal (motion artifacts, lighting).
-
-        Sprint 1 : always returns 'good' as placeholder.
-        Sprint 2 : compute SNR or variance-based quality score.
+        Évalue la qualité du signal via le rapport signal/bruit (SNR).
+        Un signal bruité (mouvement du patient) donnera une mauvaise qualité.
         """
-        # TODO Sprint 2 : real quality assessment
-        return "good"  # placeholder
+        green     = signal[:, 1]
+        freqs     = np.fft.rfftfreq(len(green), d=1/self.fps)
+        power     = np.abs(np.fft.rfft(green))
 
-    def _placeholder_output(self, reason: str) -> dict:
+        # puissance dans la plage du pouls vs puissance totale
+        mask      = (freqs >= self.hr_freq_low) & (freqs <= self.hr_freq_high)
+        signal_p  = np.sum(power[mask])
+        total_p   = np.sum(power)
+
+        if total_p == 0:
+            return "insufficient_data"
+
+        snr = signal_p / total_p
+
+        if snr > 0.6:
+            return "good"
+        elif snr > 0.3:
+            return "medium"
+        else:
+            return "poor"
+
+    def _insufficient_output(self, reason: str) -> dict:
         return {
-            "heart_rate_bpm"   : 0.0,
-            "respiration_rate" : 0.0,
-            "signal_quality"   : "insufficient_data",
-            "status"           : reason
+            "heart_rate_bpm"  : 0.0,
+            "respiration_rate": 0.0,
+            "signal_quality"  : "insufficient_data",
+            "status"          : reason
         }
