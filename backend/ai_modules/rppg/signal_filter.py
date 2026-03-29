@@ -1,70 +1,60 @@
-"""
-signal_filter.py
-----------------
-Sprint 1 : Skeleton — Filter noise from raw rPPG signals.
-Sprint 2 : Will apply Butterworth bandpass filter using SciPy.
-"""
-
 import numpy as np
+from scipy.signal import butter, filtfilt
 
 
 class SignalFilter:
     """
-    Filters the raw RGB signal extracted by RPPGExtractor.
-    Removes noise caused by movement and lighting changes.
-    Applies a bandpass filter to isolate pulse frequency (0.7–4 Hz).
+    Filtre le signal RGB brut extrait par RPPGExtractor.
+    Supprime le bruit causé par les mouvements et les changements de lumière.
+    Applique un filtre passe-bande pour isoler la fréquence du pouls (0.7–4 Hz).
     """
 
     def __init__(self, fps: int = 30, freq_low: float = 0.7, freq_high: float = 4.0):
         """
         Args:
-            fps      : frames per second of the video stream
-            freq_low : lower bound of bandpass filter in Hz (pulse ~0.7Hz = 42 BPM)
-            freq_high: upper bound of bandpass filter in Hz (pulse ~4Hz  = 240 BPM)
+            fps       : frames par seconde du stream vidéo
+            freq_low  : borne inférieure du filtre en Hz (pouls ~0.7Hz = 42 BPM)
+            freq_high : borne supérieure du filtre en Hz (pouls ~4Hz  = 240 BPM)
         """
-        self.fps = fps
-        self.freq_low = freq_low
+        self.fps       = fps
+        self.freq_low  = freq_low
         self.freq_high = freq_high
 
     def filter(self, signal: np.ndarray) -> np.ndarray:
         """
-        Applies bandpass filter to the raw RGB signal buffer.
+        Applique le filtre passe-bande sur le buffer de signal RGB.
 
         Args:
-            signal: numpy array of shape (N, 3) — N frames, RGB channels
+            signal: numpy array de shape (N, 3) — N frames, canaux RGB
 
         Returns:
-            filtered signal of same shape (N, 3)
+            signal filtré de même shape (N, 3)
         """
         if signal is None or len(signal) < 10:
-            # Not enough data yet — return as-is
             return signal
 
-        # Sprint 1 : placeholder — returns signal unchanged
-        # Sprint 2 : apply scipy.signal.butter + filtfilt here
-        filtered = self._apply_bandpass(signal)
-
+        detrended = self.detrend(signal)
+        filtered  = self._apply_bandpass(detrended)
         return filtered
 
     def _apply_bandpass(self, signal: np.ndarray) -> np.ndarray:
         """
-        Butterworth bandpass filter on each RGB channel.
+        Filtre Butterworth passe-bande sur chaque canal RGB.
 
-        Sprint 1 : returns raw signal as placeholder.
-        Sprint 2 : implement with:
-            from scipy.signal import butter, filtfilt
-            b, a = butter(N=4, Wn=[low, high], btype='bandpass', fs=self.fps)
-            return filtfilt(b, a, signal, axis=0)
+        La fréquence de Nyquist est fps/2 — fréquence max détectable.
+        On normalise freq_low et freq_high entre 0 et 1 par rapport à Nyquist.
         """
-        # TODO Sprint 2 : replace with real Butterworth filter
-        return signal  # placeholder
+        nyquist = self.fps / 2
+        low     = self.freq_low  / nyquist
+        high    = self.freq_high / nyquist
+
+        b, a = butter(N=4, Wn=[low, high], btype='bandpass')
+        return filtfilt(b, a, signal, axis=0)
 
     def detrend(self, signal: np.ndarray) -> np.ndarray:
         """
-        Removes slow trends from the signal (e.g. lighting drift).
-
-        Sprint 1 : placeholder.
-        Sprint 2 : use np.detrend or a moving average subtraction.
+        Supprime les tendances lentes du signal.
+        Ex : variation progressive de la lumière dans la pièce.
         """
-        # TODO Sprint 2 : np.detrend(signal, axis=0)
-        return signal  # placeholder
+        from scipy.signal import detrend
+        return detrend(signal, axis=0)

@@ -1,10 +1,3 @@
-"""
-rppg_extractor.py
------------------
-Sprint 1 : Skeleton — Extract raw RGB skin signals from video frames.
-Sprint 2 : Will apply spatial averaging on detected face ROI.
-"""
-
 import numpy as np
 
 
