@@ -19,10 +19,20 @@ class VideoProcessor:
 
     async def _process_loop(self):
         while self.running:
-            # TODO: get frame from frame_queue (Person A)
-            # frame = await self.frame_queue.get()
-            # self.vitals_service.estimate_heart_rate([frame])
-            await asyncio.sleep(0.033)  # ~30 FPS placeholder
+            try:
+                frame = await asyncio.wait_for(self.frame_queue.get(), timeout=5)
 
-    def stop(self):
+                if frame is None:
+                    break
+        
+                await asyncio.to_thread(self.vitals_service.estimate_heart_rate, [frame])
+
+            except asyncio.TimeoutError:
+                continue
+            
+            except Exception as e:
+                print(f"Error processing frame: {e}")
+
+    async def stop(self):
         self.running = False
+        await self.frame_queue.put(None)
