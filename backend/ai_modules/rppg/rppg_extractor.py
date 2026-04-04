@@ -1,4 +1,5 @@
 import numpy as np
+from backend.utils.image_utils import extract_roi
 
 
 class RPPGExtractor:
@@ -33,8 +34,6 @@ class RPPGExtractor:
         if len(self.frame_buffer) > self.buffer_size:
             self.frame_buffer.pop(0)
 
-        # Sprint 1 : placeholder — average entire frame instead of face ROI
-        # Sprint 2 : detect face with MediaPipe/OpenCV, extract ROI only
         raw_signal = self._extract_roi_signal(frame)
         self.signal_buffer.append(raw_signal)
 
@@ -53,13 +52,9 @@ class RPPGExtractor:
         """
         Extracts mean RGB values from the skin Region Of Interest.
 
-        Sprint 1 : uses full frame average as placeholder.
-        Sprint 2 : will use face detection bounding box.
         """
-        # TODO Sprint 2 : replace with face ROI detection
-        # roi = detect_face_roi(frame)
-        # return np.mean(frame[roi], axis=(0, 1))
-        return np.mean(frame, axis=(0, 1))  # placeholder
+        roi_frame = extract_roi(frame)
+        return np.mean(roi_frame, axis=(0, 1)) 
 
     def get_signal_buffer(self) -> np.ndarray:
         """

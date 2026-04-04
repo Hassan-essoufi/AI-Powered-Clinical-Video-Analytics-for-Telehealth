@@ -1,3 +1,5 @@
+from backend.ai_modules.wound import wound_measurement as wm , wound_segmenter as ws
+
 class WoundService:
     """
     Handles wound metrics & prepares WebSocket data.
@@ -5,19 +7,24 @@ class WoundService:
     """
 
     def __init__(self):
-        # TODO: load segmentation model from Person B
-        self.segmenter = None
+        self.segmenter = ws.WoundSegmenter()
 
-    def analyze(self, image_frame) -> dict:
+    def analyze(self, frame) -> dict:
         """
         Run wound segmentation and measurement.
         Args:
-            image_frame: raw image frame from video stream
+            frame: raw image frame from video stream
         Returns:
             dict: area_cm2, infection_risk, color_composition
         """
-        # TODO: call wound_segmenter.py then wound_measurement.py
-        raise NotImplementedError("Waiting for wound module from Person B")
+        if frame is None:
+            return None
+        
+        segmented_mask = self.segmenter.segment(frame)
+        metrics = wm.WoundMeasurement.measure(frame, segmented_mask)
+
+        return metrics
+        
 
     def prepare_ws_payload(self, result: dict) -> dict:
         """Format wound result for WebSocket broadcast."""

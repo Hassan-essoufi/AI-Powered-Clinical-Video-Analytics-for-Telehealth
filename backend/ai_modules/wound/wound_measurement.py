@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class WoundMeasurement:
     """
     Prend le masque binaire de WoundSegmenter et calcule :

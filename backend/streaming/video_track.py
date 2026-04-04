@@ -15,11 +15,13 @@ class VideoTracker(MediaStreamTrack):
         self.frame_queue = frame_queue
         self.frame_count = 0
         self.start_time = time.time()
+        self.running = True
 
     async def recv(self):
-        
+        frame = await self.track.recv()
+
         try:
-            frame = await self.track.recv()
+
             img = frame.to_ndarray(format="bgr24")
 
             # Transfomrmations
@@ -29,6 +31,7 @@ class VideoTracker(MediaStreamTrack):
             normalized = normalize_frame(resized_img)
             
             await self.frame_queue.put(normalized)
+
             self.frame_count += 1
             elapsed = time.time() - self.start_time
 
@@ -40,4 +43,6 @@ class VideoTracker(MediaStreamTrack):
         except Exception as e:
             logger.error(f"Video pipeline error: {e}")
             return frame
-    
+
+async def stop(self):
+    self.running = False

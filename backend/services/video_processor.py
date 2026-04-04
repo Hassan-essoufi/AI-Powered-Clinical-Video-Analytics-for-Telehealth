@@ -1,4 +1,5 @@
 import asyncio
+from backend.api.routes_vitals import LATEST_VITALS
 
 class VideoProcessor:
     """
@@ -6,8 +7,9 @@ class VideoProcessor:
     Bridge between Person A (streaming) and Person B (AI).
     """
 
-    def __init__(self, frame_queue, vitals_service, wound_service):
-        self.frame_queue = frame_queue      
+    def __init__(self, frame_queue, result_queue,  vitals_service, wound_service):
+        self.frame_queue = frame_queue  
+        self.result_queue = result_queue    
         self.vitals_service = vitals_service
         self.wound_service = wound_service
         self.running = False
@@ -24,9 +26,26 @@ class VideoProcessor:
 
                 if frame is None:
                     break
-        
-                await asyncio.to_thread(self.vitals_service.estimate_heart_rate, [frame])
+                vitals_task = asyncio.to_thread(
+                    self.vitals_service.estimate_heart_rate, [frame]
+                )
 
+                wound_task = asyncio.to_thread(
+                    self.wound_service.analyze, frame
+                )
+
+                vitals_result, wound_result = await asyncio.gather(
+                    vitals_task, wound_task
+                )
+
+                result = {
+                    "vitals": vitals_result,
+                    "wound": wound_result
+                }
+
+                LATEST_VITALS["bpm"] = result["vitals"].get("bpm")
+                LATEST_VITALS["rpm"] = result["vitals"].get("rpm")
+                await self.result_queue.put(result)
             except asyncio.TimeoutError:
                 continue
             
