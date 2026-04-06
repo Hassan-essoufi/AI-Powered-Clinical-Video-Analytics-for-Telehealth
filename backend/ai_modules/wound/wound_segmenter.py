@@ -15,20 +15,20 @@ class WoundSegmenter:
     Le médecin clique sur la plaie → cette classe produit
     un masque binaire de la zone de la plaie.
 
-    Sprint 2 : YOLOv11-seg — rapide, compatible temps réel.
+    Sprint 2 : YOLOv8-seg — rapide, compatible temps réel.
     """
 
-    def __init__(self, model_type: str = "yolov11"):
+    def __init__(self, model_type: str = "yolov8"):
         """
         Args:
-            model_type: 'yolov11' (défaut) ou 'sam'
+            model_type: 'yolov8' (défaut) ou 'sam'
         """
         self.model_type = model_type
         self.model      = None
 
         if YOLO_AVAILABLE:
             # Téléchargement automatique du modèle au premier lancement
-            self.model = YOLO("yolo11n-seg.pt")
+            self.model = YOLO("yolov8n.pt")
         else:
             print("[WoundSegmenter] ultralytics non installé — mode placeholder actif")
 
@@ -59,7 +59,7 @@ class WoundSegmenter:
 
     def _yolo_segment(self, frame: np.ndarray, click_point: tuple) -> np.ndarray:
         """
-        Lance l'inférence YOLOv11-seg et retourne le masque
+        Lance l'inférence YOLOv8-seg et retourne le masque
         correspondant au point cliqué par le médecin.
         """
         results = self.model(frame, verbose=False)

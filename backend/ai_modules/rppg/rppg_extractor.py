@@ -1,4 +1,5 @@
 import numpy as np
+from collections import deque
 from backend.utils.image_utils import extract_roi
 
 
@@ -14,8 +15,8 @@ class RPPGExtractor:
             buffer_size: Number of frames to keep in buffer (~5s at 30fps)
         """
         self.buffer_size = buffer_size
-        self.frame_buffer = []       # stores raw frames
-        self.signal_buffer = []      # stores extracted RGB mean signals
+        self.frame_buffer = deque(maxlen=buffer_size)       # stores raw frames
+        self.signal_buffer = deque(maxlen=buffer_size)      # stores extracted RGB mean signals
 
     def extract(self, frame: np.ndarray) -> dict:
         """
@@ -30,15 +31,8 @@ class RPPGExtractor:
         """
         self.frame_buffer.append(frame)
 
-        # Keep buffer at fixed size
-        if len(self.frame_buffer) > self.buffer_size:
-            self.frame_buffer.pop(0)
-
         raw_signal = self._extract_roi_signal(frame)
         self.signal_buffer.append(raw_signal)
-
-        if len(self.signal_buffer) > self.buffer_size:
-            self.signal_buffer.pop(0)
 
         return {
             "r_mean": raw_signal[0],
@@ -53,8 +47,14 @@ class RPPGExtractor:
         Extracts mean RGB values from the skin Region Of Interest.
 
         """
+        if frame is None or not isinstance(frame, np.ndarray) or frame.ndim != 3:
+            return np.array([0.0, 0.0, 0.0], dtype=np.float32)
+
         roi_frame = extract_roi(frame)
-        return np.mean(roi_frame, axis=(0, 1)) 
+        if roi_frame is None or not isinstance(roi_frame, np.ndarray) or roi_frame.size == 0:
+            roi_frame = frame
+
+        return np.mean(roi_frame, axis=(0, 1)).astype(np.float32)
 
     def get_signal_buffer(self) -> np.ndarray:
         """
@@ -63,4 +63,4 @@ class RPPGExtractor:
         """
         if len(self.signal_buffer) == 0:
             return np.array([])
-        return np.array(self.signal_buffer)  # shape: (N, 3)
+        return np.array(list(self.signal_buffer))  # shape: (N, 3)

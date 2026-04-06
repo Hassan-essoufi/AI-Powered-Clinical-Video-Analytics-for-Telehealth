@@ -30,10 +30,18 @@ class SignalFilter:
         Returns:
             signal filtré de même shape (N, 3)
         """
-        if signal is None or len(signal) < 10:
+        if signal is None:
+            return None
+
+        signal = np.asarray(signal, dtype=np.float32)
+        if signal.ndim != 2 or signal.shape[1] < 3 or signal.shape[0] < 10:
             return signal
 
         detrended = self.detrend(signal)
+        # filtfilt requires enough samples for the filter order; fallback safely when too short.
+        if detrended.shape[0] < 30:
+            return detrended
+
         filtered  = self._apply_bandpass(detrended)
         return filtered
 

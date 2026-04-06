@@ -19,7 +19,8 @@ class FrameQueue:
         logger.info(f"Frame added | queue_size={self.queue.qsize()}")
 
     async def get(self):
-        if self.queue.empty():
-            return None
         frame = await self.queue.get()
         return frame
+
+    def empty(self) -> bool:
+        return self.queue.empty()

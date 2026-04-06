@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from scipy.signal import butter, filtfilt
+from collections import deque
 
 
 class EVMProcessor:
@@ -44,8 +45,8 @@ class EVMProcessor:
         self.pyr_levels = pyr_levels
 
         self.enabled      = False
-        self.frame_buffer = []
         self.buffer_size  = 32
+        self.frame_buffer = deque(maxlen=self.buffer_size)
 
     def process_frame(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -58,8 +59,6 @@ class EVMProcessor:
             Frame amplifiée si activé, sinon frame originale.
         """
         self.frame_buffer.append(frame.copy())
-        if len(self.frame_buffer) > self.buffer_size:
-            self.frame_buffer.pop(0)
 
         if not self.enabled:
             return frame

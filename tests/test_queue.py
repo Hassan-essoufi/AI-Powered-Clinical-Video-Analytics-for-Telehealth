@@ -1,23 +1,37 @@
 import asyncio
+import unittest
+
 import numpy as np
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from backend.streaming.frame_queue import FrameQueue
 
-async def test_queue():
-    queue = FrameQueue()
 
-    fake_frame = np.zeros((480, 640, 3))
-    print("putting frame in queue....")
-    await queue.put(fake_frame)
+class TestFrameQueue(unittest.TestCase):
+    def test_put_get_roundtrip(self):
+        queue = FrameQueue()
+        fake_frame = np.zeros((480, 640, 3), dtype=np.float32)
 
-    print("Getting frame from queue....")
-    frame = await queue.get()
+        async def _scenario():
+            await queue.put(fake_frame)
+            frame = await queue.get()
+            return frame
 
-    print("frame shape:", frame.shape)
+        frame = asyncio.run(_scenario())
+        self.assertEqual(frame.shape, (480, 640, 3))
 
-asyncio.run(test_queue())
+    def test_empty_flag(self):
+        queue = FrameQueue()
+        self.assertTrue(queue.empty())
+
+        async def _scenario():
+            await queue.put(np.zeros((2, 2, 3), dtype=np.float32))
+
+        asyncio.run(_scenario())
+        self.assertFalse(queue.empty())
+
+
+if __name__ == "__main__":
+    unittest.main()
+
 
 
